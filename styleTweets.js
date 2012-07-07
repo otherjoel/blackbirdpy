@@ -7,10 +7,9 @@ function styleTweets() {
   $(".bbpBox").each( function(i) {
     var divID = $(this).attr("id");
     var tweetID = divID.slice(1);
+    var shortdate = $(this).find('span.twTimeStamp').text();
     var tweetURL = 'http://api.twitter.com/1/statuses/show/' + tweetID + '.json?callback=?';
     $.getJSON(tweetURL, function(data){
-      var twDate = new Date(data.created_at);
-      var shortdate = twDate.toDateString();
       // Remove plain attribution.
       $("#" + divID + " .twMeta").css('display', 'none');
       // Add styled attribution.

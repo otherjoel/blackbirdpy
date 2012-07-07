@@ -7,6 +7,8 @@
 #
 # This Python version was written by Jeff Miller, http://twitter.com/jeffmiller
 #
+# Various formatting changes by Dr. Drang, http://twitter.com/drdrang
+#
 # Requires Python 2.6.
 #
 # Usage:
@@ -22,18 +24,17 @@
 #     e.g.
 #   $ python blackbirdpy.py http://twitter.com/punchfork/status/16342628623
 #
-# - To run unit tests from the command line:
-#
-#   $ python blackbirdpy.py --unittest
 
-import datetime
+
+from datetime import datetime, timedelta
 import email.utils
 import json
-import optparse
 import re
 import sys
-import unittest
 import urllib2
+import pytz
+
+myTZ = pytz.timezone('US/Central')
 
 TWEET_EMBED_HTML = u'''<div class="bbpBox" id="t{id}"><blockquote><span class="twContent">{tweetText}</span><span class="twMeta"><br /><span class="twDecoration">&nbsp;&nbsp;&mdash; </span><span class="twRealName">{realName}</span><span class="twDecoration"> (</span><a href="http://twitter.com/{screenName}"><span class="twScreenName">@{screenName}</span></a><span class="twDecoration">) </span><a href="{tweetURL}"><span class="twTimeStamp">{easyTimeStamp}</span></a><span class="twDecoration"></span></span></blockquote></div>
 '''
@@ -80,13 +81,15 @@ def timestamp_string_to_datetime(text):
     """Convert a string timestamp of the form 'Wed Jun 09 18:31:55 +0000 2010'
     into a Python datetime object."""
     tm_array = email.utils.parsedate_tz(text)
-    return datetime.datetime(*tm_array[:6]) - datetime.timedelta(seconds=tm_array[-1])
+    dt = datetime(*tm_array[:6]) - timedelta(seconds=tm_array[-1])
+    dt = pytz.utc.localize(dt)
+    return dt.astimezone(myTZ)
 
 
 def easy_to_read_timestamp_string(dt):
     """Convert a Python datetime object into an easy-to-read timestamp
     string, like 'Wed Jun 16 2010'."""
-    return re.sub(r'(^| +)0', r'\1', dt.strftime('%a %b %d %Y'))
+    return dt.strftime("%a %b %-d %Y %-I:%M %p %Z")
 
 
 def tweet_id_from_tweet_url(tweet_url):
@@ -120,8 +123,8 @@ def embed_tweet_html(tweet_url, extra_css=None):
     tweet_text = wrap_entities(tweet_json).replace('\n', '<br />')
 
     tweet_created_datetime = timestamp_string_to_datetime(tweet_json["created_at"])
-    tweet_local_datetime = tweet_created_datetime + (datetime.datetime.now() - datetime.datetime.utcnow())
-    tweet_easy_timestamp = easy_to_read_timestamp_string(tweet_local_datetime)
+    # tweet_local_datetime = tweet_created_datetime + (datetime.datetime.now() - datetime.datetime.utcnow())
+    tweet_easy_timestamp = easy_to_read_timestamp_string(tweet_created_datetime)
 
     if extra_css is None:
         extra_css = {}
@@ -146,99 +149,6 @@ def embed_tweet_html(tweet_url, extra_css=None):
     return html
 
 
-class TestWrapUserMentionWithLink(unittest.TestCase):
-    def test_basic(self):
-        test_cases = [
-            ('@user', '<a href="http://twitter.com/user">@user</a>'),
-            ('Hey @user: hey', 'Hey <a href="http://twitter.com/user">@user</a>: hey'),
-            ('@foo and @bar', '<a href="http://twitter.com/foo">@foo</a> and <a href="http://twitter.com/bar">@bar</a>'),
-            ('Nothing to wrap', 'Nothing to wrap'),
-            ('', ''),
-            ]
-        for input, expected_output in test_cases:
-            self.assertEqual(wrap_user_mention_with_link(input), expected_output)
-
-
-class TestWrapHashtagWithLink(unittest.TestCase):
-    def test_basic(self):
-        test_cases = [
-            ('#foo', '<a href="http://twitter.com/search?q=foo">#foo</a>'),
-            ('Total #fail!', 'Total <a href="http://twitter.com/search?q=fail">#fail</a>!'),
-            ('#qiz #quz', '<a href="http://twitter.com/search?q=qiz">#qiz</a> <a href="http://twitter.com/search?q=quz">#quz</a>'),
-            ('Nothing to wrap', 'Nothing to wrap'),
-            ('', ''),
-            ]
-        for input, expected_output in test_cases:
-            self.assertEqual(wrap_hashtag_with_link(input), expected_output)
-
-
-class TestWrapHttpWithLink(unittest.TestCase):
-    def test_basic(self):
-        test_cases = [
-            ('http://foo', '<a href="http://foo">http://foo</a>'),
-            ('See http://media.twitter.com/blackbird-pie/ for more info',
-             'See <a href="http://media.twitter.com/blackbird-pie/">http://media.twitter.com/blackbird-pie/</a> for more info'),
-            ('Nothing to wrap', 'Nothing to wrap'),
-            ('', ''),
-            ]
-        for input, expected_output in test_cases:
-            self.assertEqual(wrap_http_with_link(input), expected_output)
-
-
-class TestTimestampStringToDatetime(unittest.TestCase):
-    def test_basic(self):
-        test_cases = [
-            ('Wed Jun 09 18:31:55 +0000 2010', datetime.datetime(2010, 6, 9, 18, 31, 55, 0)),
-            ('Mon Jan 11 5:01:00 +0200 1998', datetime.datetime(1998, 1, 11, 3, 1, 00, 0)),
-            ('Tue Nov 23 23:01:00 -0500 2004', datetime.datetime(2004, 11, 24, 4, 1, 00, 0)),
-            ]
-        for input, expected_output in test_cases:
-            self.assertEqual(timestamp_string_to_datetime(input), expected_output)
-
-
-class TestEasyToReadTimestampString(unittest.TestCase):
-    def test_basic(self):
-        test_cases = [
-            (datetime.datetime(2010, 6, 9, 18, 31, 55, 0), '6:31 PM Wed Jun 9, 2010'),
-            (datetime.datetime(1998, 1, 11, 3, 1, 00, 0), '3:01 AM Sun Jan 11, 1998'),
-            (datetime.datetime(2004, 11, 23, 23, 1, 00, 0), '11:01 PM Tue Nov 23, 2004'),
-            ]
-        for input, expected_output in test_cases:
-            self.assertEqual(easy_to_read_timestamp_string(input), expected_output)
-
-
-class TestTweetIdFromTweetUrl(unittest.TestCase):
-    def test_basic(self):
-        test_cases = [
-            ('http://twitter.com/foo/status/1234567890', '1234567890'),
-            ('http://twitter.com/bar99/statuses/555555', '555555'),
-            ]
-        for input, expected_output in test_cases:
-            self.assertEqual(tweet_id_from_tweet_url(input), expected_output)
-
-    def test_failure(self):
-        test_cases = [
-            'not a url',
-            'http://twitter.com/status/2345678',
-            'http://twitter.com/foo/status/',
-            'http://twitter.com/foo/status/ ',
-            ]
-        for input in test_cases:
-            self.assertRaises(ValueError, tweet_id_from_tweet_url, input)
-
 
 if __name__ == '__main__':
-    option_parser = optparse.OptionParser(usage='%prog [options] tweeturl')
-    option_parser.add_option('--unittest', dest='unittest', action='store_true', default=False,
-                             help='Run unit tests and exit')
-    options, args = option_parser.parse_args()
-
-    if options.unittest:
-        unittest.main(argv=[sys.argv[0]])
-        sys.exit(0)
-
-    if len(args) != 1:
-        option_parser.print_help()
-        sys.exit(1)
-    
-    print embed_tweet_html(args[0]).encode('utf8')
+    print embed_tweet_html(sys.argv[1]).encode('utf8')
