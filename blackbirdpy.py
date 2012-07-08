@@ -88,7 +88,7 @@ def timestamp_string_to_datetime(text):
 
 def easy_to_read_timestamp_string(dt):
     """Convert a Python datetime object into an easy-to-read timestamp
-    string, like 'Wed Jun 16 2010'."""
+    string, like 'Wed Jun 16 2010 5:22 PM CST'."""
     return dt.strftime("%a %b %-d %Y %-I:%M %p %Z")
 
 
