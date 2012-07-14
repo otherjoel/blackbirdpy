@@ -9,9 +9,11 @@ There are four parts to blackbirdpy:
 
 The idea is to provide an embedded tweet that looks almost like the tweet does on its Twitter page (without the follow, favorite, retweet, etc. buttons) and which degrades to a simple quotation when viewed in RSS.
 
-Here's an example:
+Here's an example, which sort of matches what you'd see in an RSS reader:
 
 <div class="bbpBox" id="t223636441371115520"><blockquote><span class="twContent">Embedded tweets don’t have to be fragile or track cookies: <a href="http://www.leancrew.com/all-this/2012/07/good-embedded-tweets/">leancrew.com/all-this/2012/…</a></span><span class="twMeta"><br /><span class="twDecoration">&nbsp;&nbsp;&mdash; </span><span class="twRealName">Dr. Drang</span><span class="twDecoration"> (</span><a href="http://twitter.com/drdrang"><span class="twScreenName">@drdrang</span></a><span class="twDecoration">) </span><a href="https://twitter.com/drdrang/status/223636441371115520"><span class="twTimeStamp">Thu Jul 12 2012 11:34 PM CDT</span></a><span class="twDecoration"></span></span></blockquote></div>
+
+If you follow the link in the tweet, you'll see several tweets in all their dynamically styled glory.
 
 Blackbirdpy is a Python implementation of Blackbird Pie, the
 JavaScript tool @robinsloan uses to generate embedded HTML tweets for
