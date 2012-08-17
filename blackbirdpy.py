@@ -31,23 +31,37 @@ import email.utils
 import json
 import re
 import sys
+import os
 import urllib2
 import pytz
+import tweepy
 
 myTZ = pytz.timezone('US/Central')
 
 TWEET_EMBED_HTML = u'''<div class="bbpBox" id="t{id}">\n<blockquote>\n<span class="twContent">{tweetText}</span><span class="twMeta"><br /><span class="twDecoration">&nbsp;&nbsp;&mdash; </span><span class="twRealName">{realName}</span><span class="twDecoration"> (</span><a href="http://twitter.com/{screenName}"><span class="twScreenName">@{screenName}</span></a><span class="twDecoration">) </span><a href="{tweetURL}"><span class="twTimeStamp">{easyTimeStamp}</span></a><span class="twDecoration"></span></span>\n</blockquote>\n</div>
 '''
 
-def wrap_entities(json):
+# This function pretty much taken directly from a tweepy example.
+def setup_api():
+  """Authorize the use of the Twitter API."""
+  a = {}
+  with open(os.environ['HOME'] + '/.twang') as twang:
+    for line in twang:
+      k, v = line.split(': ')
+      a[k] = v.strip()
+  auth = tweepy.OAuthHandler(a['consumerKey'], a['consumerSecret'])
+  auth.set_access_token(a['token'], a['tokenSecret'])
+  return tweepy.API(auth)
+
+def wrap_entities(t):
   """Turn URLs and @ mentions into links. Embed Twitter native photos."""
-  text = json['text']
-  mentions = json['entities']['user_mentions']
-  hashtags = json['entities']['hashtags']
-  urls = json['entities']['urls']
+  text = t.text
+  mentions = t.entities['user_mentions']
+  hashtags = t.entities['hashtags']
+  urls = t.entities['urls']
   # media = json['entities']['media']
   try:
-    media = json['entities']['media']
+    media = t.entities['media']
   except KeyError:
     media = []
   
@@ -114,15 +128,16 @@ def embed_tweet_html(tweet_url, extra_css=None):
     class name is used by this feature.
     """
     tweet_id = tweet_id_from_tweet_url(tweet_url)
-    api_url = 'http://api.twitter.com/1/statuses/show.json?include_entities=true&id=' + tweet_id
-    api_handle = urllib2.urlopen(api_url)
-    api_data = api_handle.read()
-    api_handle.close()
-    tweet_json = json.loads(api_data)
-    
-    tweet_text = wrap_entities(tweet_json).replace('\n', '<br />')
+    api = tweepy.API()
+#     api_url = 'http://api.twitter.com/1/statuses/show.json?include_entities=true&id=' + tweet_id
+#     api_handle = urllib2.urlopen(api_url)
+#     api_data = api_handle.read()
+#     api_handle.close()
+#     tweet_json = json.loads(api_data)
+    tweet = api.get_status(tweet_id, include_entities=True)
+    tweet_text = wrap_entities(tweet).replace('\n', '<br />')
 
-    tweet_created_datetime = timestamp_string_to_datetime(tweet_json["created_at"])
+    tweet_created_datetime = tweet.created_at
     # tweet_local_datetime = tweet_created_datetime + (datetime.datetime.now() - datetime.datetime.utcnow())
     tweet_easy_timestamp = easy_to_read_timestamp_string(tweet_created_datetime)
 
@@ -132,18 +147,18 @@ def embed_tweet_html(tweet_url, extra_css=None):
     html = TWEET_EMBED_HTML.format(
         id=tweet_id,
         tweetURL=tweet_url,
-        screenName=tweet_json['user']['screen_name'],
-        realName=tweet_json['user']['name'],
+        screenName=tweet.user.screen_name,
+        realName=tweet.user.name,
         tweetText=tweet_text,
-        source=tweet_json['source'],
-        profilePic=tweet_json['user']['profile_image_url'],
-        profileBackgroundColor=tweet_json['user']['profile_background_color'],
-        profileBackgroundImage=tweet_json['user']['profile_background_image_url'],
-        profileTextColor=tweet_json['user']['profile_text_color'],
-        profileLinkColor=tweet_json['user']['profile_link_color'],
-        timeStamp=tweet_json['created_at'],
+        source=tweet.source,
+        profilePic=tweet.user.profile_image_url,
+        profileBackgroundColor=tweet.user.profile_background_color,
+        profileBackgroundImage=tweet.user.profile_background_image_url,
+        profileTextColor=tweet.user.profile_text_color,
+        profileLinkColor=tweet.user.profile_link_color,
+        timeStamp=tweet.created_at,
         easyTimeStamp=tweet_easy_timestamp,
-        utcOffset=tweet_json['user']['utc_offset'],
+        utcOffset=tweet.user.utc_offset,
         bbpBoxCss=extra_css.get('bbpBox', ''),
     )
     return html
