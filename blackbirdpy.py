@@ -38,7 +38,7 @@ import tweepy
 
 myTZ = pytz.timezone('US/Central')
 
-TWEET_EMBED_HTML = u'''<div class="bbpBox" id="t{id}">\n<blockquote>\n<span class="twContent">{tweetText}</span><span class="twMeta"><br /><span class="twDecoration">&nbsp;&nbsp;&mdash; </span><span class="twRealName">{realName}</span><span class="twDecoration"> (</span><a href="http://twitter.com/{screenName}"><span class="twScreenName">@{screenName}</span></a><span class="twDecoration">) </span><a href="{tweetURL}"><span class="twTimeStamp">{easyTimeStamp}</span></a><span class="twDecoration"></span></span>\n</blockquote>\n</div>
+TWEET_EMBED_HTML = u'''<div class="bbpBox" id="t{id}">\n<blockquote>\n<span class="twContent">{tweetText}</span><span class="twMeta"><br /><span class="twDecoration">&nbsp;&nbsp;&mdash; </span><span class="twRealName">{realName}</span><span class="twDecoration"> (</span><a href="http://twitter.com/{screenName}"><span class="twScreenName">@{screenName}</span></a><span class="twDecoration">) </span><a href="{tweetURL}"><span class="twTimeStamp">{timeStamp}</span></a><span class="twDecoration"></span></span>\n</blockquote>\n</div>
 '''
 
 # This function pretty much taken directly from a tweepy example.
@@ -90,22 +90,6 @@ def wrap_entities(t):
 
   return text
     
-
-def timestamp_string_to_datetime(text):
-    """Convert a string timestamp of the form 'Wed Jun 09 18:31:55 +0000 2010'
-    into a Python datetime object."""
-    tm_array = email.utils.parsedate_tz(text)
-    dt = datetime(*tm_array[:6]) - timedelta(seconds=tm_array[-1])
-    dt = pytz.utc.localize(dt)
-    return dt.astimezone(myTZ)
-
-
-def easy_to_read_timestamp_string(dt):
-    """Convert a Python datetime object into an easy-to-read timestamp
-    string, like 'Wed Jun 16 2010 5:22 PM CST'."""
-    return dt.strftime("%a %b %-d %Y %-I:%M %p %Z")
-
-
 def tweet_id_from_tweet_url(tweet_url):
     """Extract and return the numeric tweet ID from a full tweet URL."""
     match = re.match(r'^https?://twitter\.com/(?:#!\/)?\w+/status(?:es)?/(\d+)$', tweet_url)
@@ -129,17 +113,11 @@ def embed_tweet_html(tweet_url, extra_css=None):
     """
     tweet_id = tweet_id_from_tweet_url(tweet_url)
     api = tweepy.API()
-#     api_url = 'http://api.twitter.com/1/statuses/show.json?include_entities=true&id=' + tweet_id
-#     api_handle = urllib2.urlopen(api_url)
-#     api_data = api_handle.read()
-#     api_handle.close()
-#     tweet_json = json.loads(api_data)
     tweet = api.get_status(tweet_id, include_entities=True)
     tweet_text = wrap_entities(tweet).replace('\n', '<br />')
 
-    tweet_created_datetime = tweet.created_at
-    # tweet_local_datetime = tweet_created_datetime + (datetime.datetime.now() - datetime.datetime.utcnow())
-    tweet_easy_timestamp = easy_to_read_timestamp_string(tweet_created_datetime)
+    tweet_created_datetime = pytz.utc.localize(tweet.created_at).astimezone(myTZ)
+    tweet_timestamp = tweet_created_datetime.strftime("%a %b %-d %Y %-I:%M %p %Z")
 
     if extra_css is None:
         extra_css = {}
@@ -156,8 +134,7 @@ def embed_tweet_html(tweet_url, extra_css=None):
         profileBackgroundImage=tweet.user.profile_background_image_url,
         profileTextColor=tweet.user.profile_text_color,
         profileLinkColor=tweet.user.profile_link_color,
-        timeStamp=tweet.created_at,
-        easyTimeStamp=tweet_easy_timestamp,
+        timeStamp=tweet_timestamp,
         utcOffset=tweet.user.utc_offset,
         bbpBoxCss=extra_css.get('bbpBox', ''),
     )
