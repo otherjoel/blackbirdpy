@@ -112,8 +112,8 @@ def embed_tweet_html(tweet_url, extra_css=None):
     class name is used by this feature.
     """
     tweet_id = tweet_id_from_tweet_url(tweet_url)
-    api = tweepy.API()
-    tweet = api.get_status(tweet_id, include_entities=True)
+    api = setup_api()
+    tweet = api.get_status(tweet_id)
     tweet_text = wrap_entities(tweet).replace('\n', '<br />')
 
     tweet_created_datetime = pytz.utc.localize(tweet.created_at).astimezone(myTZ)
