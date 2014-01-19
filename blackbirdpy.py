@@ -117,7 +117,7 @@ def embed_tweet_html(tweet_url, extra_css=None):
     tweet_text = wrap_entities(tweet).replace('\n', '<br />')
 
     tweet_created_datetime = pytz.utc.localize(tweet.created_at).astimezone(myTZ)
-    tweet_timestamp = tweet_created_datetime.strftime("%a %b %-d %Y %-I:%M %p %Z")
+    tweet_timestamp = tweet_created_datetime.strftime("%b %-d %Y %-I:%M %p")
 
     if extra_css is None:
         extra_css = {}
