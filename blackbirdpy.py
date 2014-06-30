@@ -61,8 +61,8 @@ def wrap_entities(t):
   urls = t.entities['urls']
   # media = json['entities']['media']
   try:
-    media = t.entities['media']
-  except KeyError:
+    media = t.extended_entities['media']
+  except (KeyError, AttributeError):
     media = []
   
   for u in urls:
@@ -80,13 +80,17 @@ def wrap_entities(t):
     text = re.sub('(?i)#' + h['text'], '<a href="http://twitter.com/search/%23' +
             h['text'] + '">#' + h['text'] + '</a>', text, 0)
   
-  for m in media:
-    if m['type'] == 'photo':
-      link = '<br /><br /><a href="' + m['media_url'] + ':large">' +\
-              '<img src="' + m['media_url'] + ':small"></a><br />'
-    else:
-      link = '<a href="' + m['expanded_url'] + '">' + m['display_url'] + '</a>'
-    text = text.replace(m['url'], link)
+  # For some reason, multiple photos have only one URL in the text of the tweet.
+  if len(media) > 0:
+    photolink = ''
+    for m in media:
+      if m['type'] == 'photo':
+        photolink += '<br /><br /><a href="' + m['media_url'] + ':large">' +\
+                    '<img src="' + m['media_url'] + ':small"></a>'
+      else:
+        photolink += '<a href="' + m['expanded_url'] + '">' +\
+                    m['display_url'] + '</a>'
+    text = text.replace(m['url'], photolink)
 
   return text
     
